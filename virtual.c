@@ -4,21 +4,24 @@
 #include <unistd.h>
 #include <string.h>
 
-#define CHECK_STACK_BOUND(p) if (p > (stack + poolsize) || p < stack) { vm_clean(); }
+#define STACK_ERROR() fprintf(stderr, "ERROR: Stack limit reached\n")
+#define CHECK_STACK_BOUND(p) if (p > (stack + poolsize) || p < stack) { STACK_ERROR();vm_clean(); }
 #define CHECK_PC_BOUND(p) if (p > (text + poolsize) || p < text) { vm_clean(); }
 
 typedef unsigned int u_int;
+typedef long long int s64;
+typedef unsigned long long int u64;
 
 // Memory regions
-int *text;
-int *stack;
+s64 *text;
+s64 *stack;
 char *data;
 
-int poolsize = 8 * 1000;
+u64 poolsize = 800000 * 1000;
 
 // Pointers
-int *pc, *bp, *sp;
-int ax, cycle;
+s64 *pc, *bp, *sp;
+s64 ax, cycle;
 
 // opcodes
 // TODO: Please remember to put the new OPCODE in all the necessary places
@@ -27,7 +30,7 @@ enum { IMM, LC, LI, SC, SI, PUSH, ADD, SUB, JMP, JZ, JNZ, EXIT, PRINT };
 int init_memory()
 {
     // Allocate memory regions
-    if (!(text = malloc(poolsize * sizeof(int)))) {
+    if (!(text = malloc(poolsize * sizeof(s64)))) {
         fprintf(stderr, "ERROR: could not allocate text area\n");
         return -1;
     }
@@ -35,7 +38,7 @@ int init_memory()
         fprintf(stderr, "ERROR: could not allocate data area\n");
         return -1;
     }
-    if (!(stack = malloc(poolsize * sizeof(int)))) {
+    if (!(stack = malloc(poolsize * sizeof(s64)))) {
         fprintf(stderr, "ERROR: could not allocate stack area\n");
         return -1;
     }
@@ -45,7 +48,7 @@ int init_memory()
     memset(stack, 0, poolsize);
 
     // Stack items increase from high to low memory address
-    bp = sp = (int *)(stack + poolsize);
+    bp = sp = (s64 *)(stack + poolsize);
     ax = 0;
 
     return 0;
@@ -61,7 +64,7 @@ void vm_clean()
 
 void eval()
 {
-    int op;
+    u64 op;
     while (1) {
         CHECK_PC_BOUND(pc+1);
         op = *pc++;
@@ -106,10 +109,10 @@ void eval()
                 pc = ax ? text + *pc : pc + 1;
                 break;
             case PRINT:
-                printf("print: %d\n", ax);
+                printf("print: %lld\n", ax);
                 break;
             case EXIT:
-                printf("exit(%d)\n", *sp); 
+                printf("exit(%lld)\n", *sp); 
                 return;
             default:
                 continue;
@@ -208,7 +211,7 @@ void read_op_from_file(FILE *fp)
                 break;
             default:
                 // TODO: handle data
-                text[i++] = atoi(buf);
+                text[i++] = (s64)atoi(buf);
                 break;
         }
         // printf("%s ", buf);
