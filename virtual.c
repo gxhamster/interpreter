@@ -5,8 +5,9 @@
 #include <string.h>
 
 #define STACK_ERROR() fprintf(stderr, "ERROR: Stack limit reached\n")
+#define PC_ERROR() fprintf(stderr, "ERROR: Stack limit reached\n")
 #define CHECK_STACK_BOUND(p) if (p > (stack + poolsize) || p < stack) { STACK_ERROR();vm_clean(); }
-#define CHECK_PC_BOUND(p) if (p > (text + poolsize) || p < text) { vm_clean(); }
+#define CHECK_PC_BOUND(p) if (p > (text + poolsize) || p < text) { PC_ERROR();vm_clean(); }
 
 typedef unsigned int u_int;
 typedef long long int s64;
@@ -17,7 +18,7 @@ s64 *text;
 s64 *stack;
 char *data;
 
-u64 poolsize = 800000 * 1000;
+u64 poolsize = 800 * 1000;
 
 // Pointers
 s64 *pc, *bp, *sp;
@@ -25,7 +26,7 @@ s64 ax, cycle;
 
 // opcodes
 // TODO: Please remember to put the new OPCODE in all the necessary places
-enum { IMM, LC, LI, SC, SI, PUSH, ADD, SUB, JMP, JZ, JNZ, EXIT, PRINT };
+enum { IMM, LC, LI, SC, SI, PUSH, ADD, SUB, MUL, DIV, JMP, JZ, JNZ, EXIT, PRINT };
 
 int init_memory()
 {
@@ -59,7 +60,7 @@ void vm_clean()
     free(text);
     free(data);
     free(stack);
-    exit(-1);
+    exit(0);
 }
 
 void eval()
@@ -76,7 +77,7 @@ void eval()
                 ax = *(char *)ax;
                 break;
             case LI:
-                ax = *(int *)ax;
+                ax = *(s64 *)ax;
                 break;
             case SC:
                 CHECK_STACK_BOUND(sp+1);
@@ -84,7 +85,7 @@ void eval()
                 break;
             case SI:
                 CHECK_STACK_BOUND(sp+1);
-                *(int *)*sp++ = ax;
+                *(s64 *)*sp++ = ax;
                 break;
             case PUSH:
                 CHECK_STACK_BOUND(sp-1);
@@ -97,6 +98,14 @@ void eval()
             case SUB:
                 CHECK_STACK_BOUND(sp+1);
                 ax = *sp++ - ax;
+                break;
+            case MUL:
+                CHECK_STACK_BOUND(sp+1);
+                ax = *sp++ * ax;
+                break;
+            case DIV:
+                CHECK_STACK_BOUND(sp+1);
+                ax = *sp++ / ax;
                 break;
             case JMP:
                 // Right now JMP uses an offset from the starting point (not actual address)
@@ -135,6 +144,8 @@ int lookup_op(char *str)
         {"PUSH", PUSH},
         {"ADD", ADD},
         {"SUB", SUB},
+        {"MUL", MUL},
+        {"DIV", DIV},
         {"JMP", JMP},
         {"JZ", JZ},
         {"JNZ", JNZ},
@@ -161,7 +172,6 @@ void read_op_from_file(FILE *fp)
     char buf[bufsize];
     int i = 0;
     int buf_op;
-    // enum { IMM, LC, LI, SC, SI, PUSH, ADD, SUB, EXIT };
     while (fgets(buf, bufsize, fp)) {
         buf[strcspn(buf, "\n")] = 0;
         // ignore comments
@@ -193,6 +203,12 @@ void read_op_from_file(FILE *fp)
                 break;
             case SUB:
                 text[i++] = SUB;
+                break;
+            case MUL:
+                text[i++] = MUL;
+                break;
+            case DIV:
+                text[i++] = DIV;
                 break;
             case JMP:
                 text[i++] = JMP;
