@@ -22,7 +22,7 @@ int ax, cycle;
 
 // opcodes
 // TODO: Please remember to put the new OPCODE in all the necessary places
-enum { IMM, LC, LI, SC, SI, PUSH, ADD, SUB, JMP, EXIT, PRINT };
+enum { IMM, LC, LI, SC, SI, PUSH, ADD, SUB, JMP, JZ, JNZ, EXIT, PRINT };
 
 int init_memory()
 {
@@ -99,6 +99,12 @@ void eval()
                 // Right now JMP uses an offset from the starting point (not actual address)
                 pc = text + *pc;
                 break;
+            case JZ:
+                pc = ax ? pc + 1 : text + *pc;
+                break;
+            case JNZ:
+                pc = ax ? text + *pc : pc + 1;
+                break;
             case PRINT:
                 printf("print: %d\n", ax);
                 break;
@@ -127,6 +133,8 @@ int lookup_op(char *str)
         {"ADD", ADD},
         {"SUB", SUB},
         {"JMP", JMP},
+        {"JZ", JZ},
+        {"JNZ", JNZ},
         {"EXIT", EXIT},
         {"PRINT", PRINT},
     };
@@ -185,6 +193,12 @@ void read_op_from_file(FILE *fp)
                 break;
             case JMP:
                 text[i++] = JMP;
+                break;
+            case JZ:
+                text[i++] = JZ;
+                break;
+            case JNZ:
+                text[i++] = JNZ;
                 break;
             case PRINT:
                 text[i++] = PRINT;
